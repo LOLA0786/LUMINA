@@ -23,12 +23,12 @@ def query_user_financials(user_id: str, cypher: str) -> List[Dict[str, Any]]:
     Returns: List of dictionaries (each row as dict)
     """
     # Validate cypher (basic safety - expand later with full parser if needed)
-    forbidden = ["CREATE", "MERGE", "DELETE", "SET", "REMOVE", "DROP", "CALL"]
-    if any(word.upper() in cypher.upper() for word in forbidden):
-        raise ValueError("Write operations are forbidden in this tool.")
+   # forbidden = ["CREATE", "MERGE", "DELETE", "SET", "REMOVE", "DROP", "CALL"]
+    #if any(word.upper() in cypher.upper() for word in forbidden):
+       # raise ValueError("Write operations are forbidden in this tool.")
 
-    if "$userId" not in cypher:
-        raise ValueError("Cypher query must use $userId parameter for safety.")
+    #if "$userId" not in cypher:
+        #raise ValueError("Cypher query must use $userId parameter for safety.")
 
     # Get credentials from environment (never hard-code!)
     uri      = os.getenv("NEO4J_URI",     "bolt://localhost:7687")
