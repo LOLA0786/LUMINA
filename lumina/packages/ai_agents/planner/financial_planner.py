@@ -86,29 +86,29 @@ class FinancialPlanner:
 
         if request.intent in (PlannerIntent.FULL_REVIEW, PlannerIntent.RISK):
             out = self.agents["risk"](RiskInput(**base, **request.params))
-            results["risk"] = out.dict()
+            results["risk"] = out.model_dump()
             memory.write("risk_agent", "overall_risk_score", out.overall_risk_score)
             memory.write("risk_agent", "risk_flags", out.risk_flags)
 
         if request.intent in (PlannerIntent.FULL_REVIEW, PlannerIntent.PORTFOLIO):
             out = self.agents["portfolio"](PortfolioInput(**base))
-            results["portfolio"] = out.dict()
+            results["portfolio"] = out.model_dump()
             memory.write("portfolio_agent", "rebalance_actions", out.rebalance_actions)
 
         if request.intent in (PlannerIntent.FULL_REVIEW, PlannerIntent.TAX):
             out = self.agents["tax"](TaxInput(**base, **request.params))
-            results["tax"] = out.dict()
+            results["tax"] = out.model_dump()
             memory.write("tax_agent", "recommended_regime", out.recommended_regime)
             memory.write("tax_agent", "tax_savings_possible", out.tax_savings_possible_inr)
 
         if request.intent in (PlannerIntent.FULL_REVIEW, PlannerIntent.RETIREMENT):
             out = self.agents["retirement"](RetirementInput(**base, **request.params))
-            results["retirement"] = out.dict()
+            results["retirement"] = out.model_dump()
             memory.write("retirement_agent", "on_track", out.on_track)
 
         if request.intent == PlannerIntent.HOUSE_PURCHASE:
             out = self.agents["house_purchase"](HousePurchaseInput(**base, **request.params))
-            results["house_purchase"] = out.dict()
+            results["house_purchase"] = out.model_dump()
 
         # Health score (simple composite from available agent outputs)
         health_inputs = []
