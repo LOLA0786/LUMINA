@@ -8,3 +8,15 @@ __pycache__/
 *.pyo
 *.pyd
 docker-compose.yml
+
+# Python temp
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+
+# Local docker
+docker-compose.override.yml
