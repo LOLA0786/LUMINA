@@ -1,0 +1,12 @@
+[project]
+name = "lumina"
+version = "0.1.0"
+description = "AI Financial Life OS"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi", "uvicorn", "langgraph", "neo4j", "pydantic", "sqlalchemy",
+    "opentelemetry-api", "sentry-sdk"
+]
+
+[tool.poetry]
+packages = [{include = "lumina"}]
