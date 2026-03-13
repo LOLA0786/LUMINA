@@ -1,5 +1,4 @@
 <div align="center">
-
 ```
 ██╗     ██╗   ██╗███╗   ███╗██╗███╗   ██╗ █████╗
 ██║     ██║   ██║████╗ ████║██║████╗  ██║██╔══██╗
@@ -9,15 +8,14 @@
 ╚══════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
 ```
 
-**Financial Intelligence Infrastructure**
+**Financial Operating System**
 
-*A consented wealth data graph with AI reasoning for advisors, banks, and fintech platforms.*
+*Not a robo-advisor. Not a chatbot. Financial infrastructure.*
 
-[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-3%2F3%20passing-22c55e?style=flat-square)](./lumina/packages/ai_agents/tests)
-[![Pydantic](https://img.shields.io/badge/Pydantic-V2-E92063?style=flat-square)](https://docs.pydantic.dev)
-[![License](https://img.shields.io/badge/License-Proprietary-gray?style=flat-square)]()
-[![Status](https://img.shields.io/badge/Status-Active%20Development-f59e0b?style=flat-square)]()
+[![CI](https://github.com/LOLA0786/LUMINA/actions/workflows/ci.yml/badge.svg)](https://github.com/LOLA0786/LUMINA/actions)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Tests](https://img.shields.io/badge/tests-58%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 </div>
 
@@ -25,259 +23,189 @@
 
 ## What is LUMINA?
 
-Most "AI finance apps" are ChatGPT with a money emoji.
+Most fintech is advice software:
+```
+User → Agents → Advice
+```
 
-LUMINA is not that.
+LUMINA is financial infrastructure:
+```
+User → Financial Digital Twin → Event Reactor → Agent Debate
+     → PrivateVault Governance → Merkle Audit Log → Execution
+```
 
-LUMINA is **financial reasoning infrastructure** — a composable engine that ingests a user's complete wealth graph (assets, liabilities, goals, income, risk profile) and runs structured, auditable, consent-gated reasoning across every dimension of their financial life.
-
-Built for the layer **beneath** the UI. The layer banks, advisors, and fintech platforms plug into.
-
----
-
-## The Problem We're Solving
-
-| Today | With LUMINA |
-|---|---|
-| Financial advice is locked inside expensive advisors | Systematic reasoning available at API scale |
-| AI finance tools hallucinate numbers | Every output has a typed schema + reasoning trace |
-| User data flows without consent tracking | Consent gate on every agent invocation |
-| Generic chatbot responses | Domain-correct logic (RBI norms, Indian tax slabs, FOIR limits) |
-| Black-box recommendations | Full audit trail — regulator friendly |
+Every financial event in a person's life triggers an immediate,
+governed, auditable AI response. Not a chatbot reply. An action.
 
 ---
 
 ## Architecture
-
 ```
-lumina/
-├── packages/
-│   └── ai_agents/
-│       ├── core/               ← Base agent: consent gate, audit trail, typed I/O
-│       ├── graph/              ← WealthGraph: Neo4j abstraction over user financial data
-│       ├── memory/             ← SessionMemory: inter-agent context passing
-│       ├── agents/
-│       │   ├── house_purchase/ ← EMI calc, LTV check, stress test, affordability verdict
-│       │   ├── portfolio_agent/← Drift analysis, rebalancing recommendations
-│       │   ├── tax_agent/      ← Old vs New regime optimiser, 80C/80D/NPS tips
-│       │   ├── retirement_agent← Corpus projection, SIP gap calculator
-│       │   └── risk_agent/     ← Concentration, liquidity, leverage, insurance scoring
-│       ├── planner/            ← FinancialPlanner: master orchestrator
-│       ├── tools/              ← Shared formatters, INR notation, report renderer
-│       └── tests/              ← Pytest integration suite
-├── apps/                       ← API servers, frontends (coming)
-├── domains/                    ← Core business domain logic
-├── infrastructure/             ← Docker, cloud config
-└── docker-compose.yml
+┌─────────────────────────────────────────────────────────┐
+│                  LUMINA FINANCIAL OS                    │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  FinancialTwin          EventReactor                    │
+│  ├── bank_accounts      ├── salary_credited             │
+│  ├── demat_holdings     ├── market_crash                │
+│  ├── property_assets    ├── goal_at_risk                │
+│  ├── loans              └── loan_closed                 │
+│  ├── insurance                   │                      │
+│  ├── income_streams              ▼                      │
+│  ├── tax_profile        AgentDebate                     │
+│  └── financial_goals    ├── RiskAgent      (priority 1) │
+│           │             ├── RetirementAgent (priority 2) │
+│           │             ├── PortfolioAgent  (priority 3) │
+│     Git-for-money       └── TaxAgent       (priority 4) │
+│     Hash-linked                  │                      │
+│     Tamper-evident               ▼                      │
+│                         PolicyEngine (PrivateVault)     │
+│                         ├── Consent check               │
+│                         ├── Liquidity check             │
+│                         ├── Concentration check         │
+│                         └── Fiduciary check             │
+│                                  │                      │
+│                                  ▼                      │
+│                         AuditLedger (Merkle)            │
+│                         └── Tamper-evident receipt      │
+│                                                         │
+│  FastAPI Layer          AdvisorBrief                    │
+│  ├── 10 endpoints       ├── P0/P1/P2 alerts             │
+│  ├── Pydantic V2        ├── Portfolio drift             │
+│  └── Auto docs          └── Merkle root display         │
+└─────────────────────────────────────────────────────────┘
 ```
-
----
-
-## The Reasoning Engine
-
-Every agent follows the same contract:
-
-```
-Input (typed Pydantic) → Consent Check → Domain Reasoning → Output (typed Pydantic + trace)
-```
-
-No magic strings. No silent failures. No hallucinated numbers.
-
-### Agents
-
-#### 🏠 House Purchase Agent
-```
-Can I afford this property?
-```
-- Computes max loan eligibility (60x income, RBI 75/80% LTV cap)
-- Calculates EMI at requested rate
-- Runs +200bps rate shock stress test
-- Checks down-payment gap vs liquid assets
-- Returns: `AFFORDABLE` | `STRETCH` | `NOT_ADVISED`
-
-#### 📊 Portfolio Agent
-```
-Is my money allocated correctly?
-```
-- Computes current allocation across asset classes
-- Derives target allocation from age + risk score (100-age rule, adjusted)
-- Flags drift beyond configurable threshold
-- Returns ranked rebalancing actions with INR amounts
-
-#### 🧾 Tax Agent
-```
-Which regime should I choose, and what am I missing?
-```
-- Full FY 2024-25 slab calculations (old and new regime)
-- 80C, 80D, HRA, NPS deduction optimisation
-- LTCG / STCG tax on equity and debt
-- Returns recommended regime + specific investment actions to reduce liability
-
-#### 🌅 Retirement Agent
-```
-Can I retire at 55? What SIP do I need?
-```
-- Projects corpus at retirement using SIP FV + existing portfolio compounding
-- Inflation-adjusts target spend over retirement horizon
-- Uses real rate of return for sustainable withdrawal modelling
-- Returns: on-track status, surplus/shortfall, recommended SIP correction
-
-#### 🛡️ Risk Agent
-```
-Where am I exposed?
-```
-Four independent risk dimensions, scored 0→1:
-- **Concentration** — single asset > 30% of portfolio
-- **Liquidity** — liquid assets vs 6-month emergency fund
-- **Leverage** — debt-to-income ratio against safe thresholds
-- **Insurance** — life cover vs income replacement requirement
-
-#### 🧠 Financial Planner (Master Orchestrator)
-```python
-planner.run(PlannerRequest(user_id="u001", intent=PlannerIntent.FULL_REVIEW))
-```
-- Selects and sequences relevant agents based on intent
-- Passes shared context via `SessionMemory`
-- Synthesises composite financial health score
-- Returns executive summary + full agent result map
 
 ---
 
 ## Quickstart
-
 ```bash
 git clone https://github.com/LOLA0786/LUMINA.git
 cd LUMINA
-pip install -e . --break-system-packages
-```
+pip install -e ".[dev]"
 
-```python
-from lumina.packages.ai_agents.graph.wealth_graph import (
-    WealthGraph, UserFinancialProfile, AssetNode, LiabilityNode
-)
-from lumina.packages.ai_agents.planner.financial_planner import (
-    FinancialPlanner, PlannerIntent, PlannerRequest
-)
-from lumina.packages.ai_agents.core.base_agent import ConsentLevel
+# Run the full demo — 3 clients, 6 events, full pipeline
+python -m lumina.scripts.seed_demo
 
-# Build a user profile
-profile = UserFinancialProfile(
-    user_id="user_001",
-    monthly_income_inr=150000,
-    monthly_expenses_inr=70000,
-    age=32,
-    risk_score=0.65,
-    assets=[
-        AssetNode("a1", "equity", 800000),
-        AssetNode("a2", "cash", 200000),
-        AssetNode("a3", "real_estate", 3000000),
-    ],
-    liabilities=[
-        LiabilityNode("l1", "home_loan", 2000000, 8.5, 180),
-    ],
-)
-
-# Load into graph
-graph = WealthGraph()
-graph.load_fixture(profile)
-
-# Run full financial review
-planner = FinancialPlanner(graph)
-response = planner.run(PlannerRequest(
-    user_id="user_001",
-    intent=PlannerIntent.FULL_REVIEW,
-    consent_level=ConsentLevel.READ_ONLY,
-    params={"target_retirement_age": 55, "monthly_sip_inr": 20000},
-))
-
-print(response.executive_summary)
-# → Financial Health: Good (72%) | Risk Flags: 1 active | Retirement: On Track ✓ | Tax: Use NEW regime | Potential saving ₹18,200
+# Start the API
+uvicorn lumina.api.app:app --reload --port 8000
+# Docs: http://localhost:8000/docs
 ```
 
 ---
 
-## Run Tests
+## Live Demo Output
+```
+STEP 1 — Building Financial Digital Twins
+  ✓ rohan_mehta       net_worth=₹0.10Cr   snapshots=8
+  ✓ sunita_krishnan   net_worth=₹3.13Cr   snapshots=11
+  ✓ vikram_nair       net_worth=₹-0.01Cr  snapshots=6
 
+STEP 2 — Event Reactor (event → agent → decision < 0.5ms)
+  ✓ salary_credited  → 3 agents → unanimous → allowed
+  ✓ market_crash     → 3 agents → unanimous → allowed
+  ✓ goal_at_risk     → 2 agents → majority  → flagged
+  ✓ loan_closed      → 2 agents → majority  → flagged
+
+STEP 3 — AI Advice Engine
+  rohan_mehta      Health: NEEDS WORK (53%)
+  sunita_krishnan  Health: GOOD      (70%)
+  vikram_nair      Health: NEEDS WORK (43%)
+
+STEP 4 — PrivateVault Merkle Governance
+  Decisions : 12
+  Merkle root: 23dd32db8933c82e...
+  Chain      : ✓ VALID
+  Allowed/Flagged/Blocked: 10 / 2 / 0
+
+STEP 5 — Advisor Morning Brief
+  P0: vikram_nair LIQUIDITY_RISK — ₹1.5L at stake
+```
+
+---
+
+## Key Design Decisions
+
+**1. Immutable Digital Twin**
+Every financial change creates a new hash-linked snapshot.
+The chain is cryptographically verifiable. Nothing is deleted.
+Think: Git for money.
+
+**2. Event-Driven Agents**
+Agents don't wait to be asked. They react automatically.
+`salary_credited` → tax + retirement + risk agents run in <0.5ms.
+
+**3. Multi-Agent Debate**
+Agents disagree. The system arbitrates by priority weight.
+RiskAgent always has the loudest voice.
+
+**4. PrivateVault Governance**
+Every AI action goes through 6 policy checks before execution.
+Every decision is Merkle-hashed and tamper-evident.
+Compatible with [PrivateVault-AI-Agent-Architecture](https://github.com/LOLA0786/PrivateVault-AI-Agent-Architecture).
+
+**5. Explainable by design**
+Every recommendation includes reasoning trace, confidence,
+assumptions, and a cryptographic audit receipt.
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/users` | Onboard a user |
+| GET | `/api/v1/users/{id}` | Get twin status |
+| POST | `/api/v1/users/{id}/accounts` | Add bank account |
+| POST | `/api/v1/users/{id}/holdings` | Add demat holding |
+| POST | `/api/v1/users/{id}/loans` | Add loan |
+| POST | `/api/v1/users/{id}/events` | Fire financial event |
+| POST | `/api/v1/users/{id}/advice` | Get AI advice |
+| GET | `/api/v1/advisor/{id}/brief` | RM morning brief |
+| GET | `/api/v1/health` | System health |
+
+---
+
+## Test Suite
 ```bash
-cd ~/LUMINA
-python -m pytest lumina/packages/ai_agents/tests/ -v
+python -m pytest lumina/ -v
+# 58 tests | 4 test classes | 0 warnings
 ```
-
 ```
-tests/test_planner.py::test_house_purchase_affordable   PASSED
-tests/test_planner.py::test_full_financial_review       PASSED
-tests/test_planner.py::test_consent_blocked             PASSED
-
-3 passed, 0 warnings in 0.23s
+TestFinancialTwin    ✓ 6 tests  — chain validity, mutations, tamper detection
+TestEventEngine      ✓ 5 tests  — event routing, handler firing, severity
+TestGovernance       ✓ 7 tests  — policy checks, Merkle integrity, tamper detection
+TestFinancialOS      ✓ 10 tests — full pipeline, advisor brief, session tracking
 ```
-
----
-
-## Design Principles
-
-**1. Consent-first**
-Every agent checks `ConsentLevel` before executing. `NONE` → blocked. No exceptions. Built for DPDP Act, SEBI, RBI compliance from day one.
-
-**2. Typed everywhere**
-Inputs and outputs are Pydantic V2 models. If data doesn't match the schema, it fails loudly at the boundary — not silently inside business logic.
-
-**3. Reasoning traces**
-Every agent output includes a `reasoning_trace: list[str]` — a step-by-step log of how the conclusion was reached. Auditable. Explainable. Regulator-ready.
-
-**4. Graph-abstracted**
-Agents never touch a database directly. They query `WealthGraph`. Swap Neo4j for Neptune for a JSON fixture for tests — zero agent code changes.
-
-**5. Composable by design**
-Agents are independent units. The planner composes them. `SessionMemory` lets them share context. Adding a new agent is additive — nothing breaks.
 
 ---
 
 ## Roadmap
 
-```
-✅ Phase 1 — Core Reasoning Engine       (complete)
-   Base agent, WealthGraph, 5 agents, Planner, Tests
-
-🔄 Phase 2 — API Layer                   (next)
-   FastAPI endpoints, auth middleware, rate limiting
-
-⬜ Phase 3 — LLM Bridge
-   Natural language → PlannerRequest routing via Claude/GPT
-
-⬜ Phase 4 — Data Ingestion
-   Bank statement parser → WealthGraph population
-
-⬜ Phase 5 — Platform SDK
-   NPM + PyPI packages for advisor/bank integration
-```
+- [x] Financial Digital Twin (immutable, hash-linked)
+- [x] Event Engine (12 event types)
+- [x] Multi-Agent Debate Engine
+- [x] PrivateVault Governance Layer
+- [x] Merkle Audit Ledger
+- [x] FastAPI layer (10 endpoints)
+- [x] SQLite persistence (Postgres-ready)
+- [x] Structured logging + health checks
+- [x] Event Reactor (event→agent<0.5ms)
+- [ ] Cloud Run deployment
+- [ ] Bank statement parser → Digital Twin
+- [ ] LLM natural language interface
+- [ ] Real-time market feed integration
+- [ ] Mobile SDK
 
 ---
 
-## Who This Is For
+## Related
 
-| Persona | How they use LUMINA |
-|---|---|
-| **Wealth advisors** | Run full financial review for clients in seconds, with traceable reasoning |
-| **Fintech platforms** | Embed financial intelligence as an API — no ML team required |
-| **Banks** | Consent-gated profile enrichment + automated advisory layer |
-| **Investors** | A financial reasoning engine with Indian domain depth, not a chatbot |
+[PrivateVault-AI-Agent-Architecture](https://github.com/LOLA0786/PrivateVault-AI-Agent-Architecture)
+— Runtime governance and Merkle transparency log that powers LUMINA's policy engine.
 
 ---
 
-## Built With
-
-- **Python 3.12** — type hints throughout
-- **Pydantic V2** — schema enforcement at every boundary
-- **Pytest** — integration test suite
-- **Neo4j-ready** — WealthGraph abstraction (swap driver, not code)
-- **Google Cloud Shell** — developed and deployed on GCP
-
----
-
- 
-
-*LUMINA is infrastructure. Build on it.*
-
-**[View Source](https://github.com/LOLA0786/LUMINA) · Built by [@LOLA0786](https://github.com/LOLA0786)**
-
- 
+<div align="center">
+Built with Python 3.12 · FastAPI · Pydantic V2 · SQLite/Postgres · PrivateVault
+</div>
