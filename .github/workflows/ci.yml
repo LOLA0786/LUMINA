@@ -1,0 +1,58 @@
+name: LUMINA CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pydantic pytest pytest-cov
+
+      - name: Install LUMINA
+        run: pip install -e .
+
+      - name: Run agent tests
+        run: |
+          python -m pytest lumina/packages/ai_agents/tests/ \
+            -v --tb=short \
+            --cov=lumina/packages/ai_agents \
+            --cov-report=term-missing
+
+      - name: Run Financial OS tests
+        run: |
+          python -m pytest lumina/packages/financial_os/tests/ \
+            -v --tb=short \
+            --cov=lumina/packages/financial_os \
+            --cov-report=term-missing
+
+      - name: Run full suite + coverage gate
+        run: |
+          python -m pytest lumina/ \
+            -v --tb=short \
+            --cov=lumina \
+            --cov-report=term-missing \
+            --cov-fail-under=70
+
+      - name: Confirm test count
+        run: |
+          COUNT=$(python -m pytest lumina/ --collect-only -q 2>/dev/null | tail -1 | awk '{print $1}')
+          echo "Total tests collected: $COUNT"
+          if [ "$COUNT" -lt 50 ]; then
+            echo "ERROR: Expected 50+ tests, found $COUNT"
+            exit 1
+          fi
