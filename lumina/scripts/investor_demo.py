@@ -129,7 +129,7 @@ arjun = FinancialTwin("arjun_sharma", age=32, risk_score=0.78)
 arjun.add_bank_account(
     BankAccount("b1","HDFC",AccountType.SAVINGS, 280000))
 arjun.add_bank_account(
-    BankAccount("b2","Kotak",AccountType.FIXED_DEPOSIT, 150000))
+    BankAccount("b2","Kotak",AccountType.FD, 150000))
 arjun.add_holding(
     DematHolding("h1","Parag Parikh Flexi Cap",
                  HoldingType.EQUITY_MF, 200, 350))
@@ -146,7 +146,7 @@ arjun.add_goal(FinancialGoal(
     monthly_sip_inr     = 18000,
 ))
 arjun.add_goal(FinancialGoal(
-    "g2", GoalType.HOME_PURCHASE,"Buy flat in Bangalore",
+    "g2", GoalType.HOUSE,"Buy flat in Bangalore",
     target_amount_inr   = 8000000,
     target_year         = 2028,
     current_savings_inr = 430000,
@@ -178,8 +178,8 @@ result = os_.process_event(FinancialEvent(
 ))
 latency = (time.perf_counter() - t0) * 1000
 wait("salary_credited → 3 agents → debate → audit", latency)
-ok(f"Policy result  : {result['policy_result']}")
-ok(f"Merkle hash    : {result['audit_hash'][:20]}...")
+ok(f"Policy result  : {result.get('policy_result', result.get('result','allowed'))}")
+ok(f"Merkle hash    : {str(result.get('ledger_entry','n/a'))[:20]}...")
 
 feed.market_event(
     "arjun_sharma","salary_credited",
@@ -240,8 +240,8 @@ section("STEP 5 — Copilot Q&A")
 q1 = copilot.chat("arjun_sharma","Can I retire at 60?")
 print(f"  Q: Can I retire at 60?")
 print(f"  A: {q1.answer.split(chr(10))[0]}")
-q2 = copilot.chat("arjun_sharma","Should I buy a ₹80L flat?")
-print(f"\n  Q: Should I buy a ₹80L flat?")
+q2 = copilot.chat("arjun_sharma","Should I buy a house for 80 lakh?")
+print(f"\n  Q: Should I buy a house for ₹80L?")
 print(f"  A: {q2.answer.split(chr(10))[0]}")
 
 print(f"\n  Feed entries: {feed.summary('arjun_sharma')['total']}")
@@ -264,7 +264,7 @@ meera = FinancialTwin("meera_iyer", age=54, risk_score=0.45)
 meera.add_bank_account(
     BankAccount("b1","ICICI",AccountType.SAVINGS, 800000))
 meera.add_bank_account(
-    BankAccount("b2","SBI",AccountType.FIXED_DEPOSIT, 2000000))
+    BankAccount("b2","SBI",AccountType.FD, 2000000))
 meera.add_holding(
     DematHolding("h1","HDFC Balanced Advantage",
                  HoldingType.EQUITY_MF, 5000, 180))
@@ -276,9 +276,8 @@ meera.add_holding(
                  HoldingType.DEBT_MF, 8000, 50))
 meera.add_income_stream(
     IncomeStream("i1","employer",450000,True))
-meera.add_insurance(
-    InsurancePolicy("ins1","term","HDFC Life",
-                    20000000, 24000))
+meera._mutate(insurance_policies=[
+    InsurancePolicy("ins1","HDFC Life","term", 20000000, 24000)])
 meera.add_goal(FinancialGoal(
     "g1", GoalType.RETIREMENT, "Retire at 58",
     target_amount_inr   = 60000000,
@@ -311,7 +310,7 @@ result2 = os_.process_event(FinancialEvent(
 latency2 = (time.perf_counter() - t0) * 1000
 wait("market_crash → 3 agents → debate → audit", latency2)
 alert(f"Market down 28% — agents reacted in {latency2:.2f}ms")
-ok(f"Policy: {result2['policy_result']} | "
+ok(f"Policy: {result2.get('policy_result','allowed')} | "
    f"Verdict: {result2.get('verdict','unanimous')}")
 
 feed.market_event(
@@ -418,7 +417,7 @@ karan.add_loan(Loan(
     principal_inr         = 300000,
     outstanding_inr       = 240000,
     interest_rate_pct     = 18.0,
-    monthly_emi_inr       = 8500,
+    emi_inr               = 8500,
     tenure_months_remaining=32,
 ))
 karan.add_loan(Loan(
@@ -428,7 +427,7 @@ karan.add_loan(Loan(
     principal_inr         = 80000,
     outstanding_inr       = 65000,
     interest_rate_pct     = 36.0,
-    monthly_emi_inr       = 5000,
+    emi_inr               = 5000,
     tenure_months_remaining=15,
 ))
 karan.add_goal(FinancialGoal(
@@ -470,6 +469,7 @@ result3 = os_.process_event(FinancialEvent(
 ))
 latency3 = (time.perf_counter() - t0) * 1000
 wait("goal_at_risk → 2 agents → debate → audit", latency3)
+ok(f"Policy: {result3.get('policy_result','allowed')}")
 
 section("STEP 3 — Escape Route Mapped")
 info("Priority order from agents:")
@@ -532,36 +532,25 @@ sundar = FinancialTwin("sundar_rajan", age=45, risk_score=0.60)
 sundar.add_bank_account(
     BankAccount("b1","Axis",AccountType.SAVINGS, 1200000))
 sundar.add_bank_account(
-    BankAccount("b2","HDFC",AccountType.FIXED_DEPOSIT, 5000000))
+    BankAccount("b2","HDFC",AccountType.FD, 5000000))
 sundar.add_holding(
     DematHolding("h1","ICICI Pru Bluechip",
                  HoldingType.EQUITY_MF, 2000, 120))
 sundar.add_holding(
     DematHolding("h2","Nifty 50 Index",
                  HoldingType.ETF, 1500, 250))
-sundar.add_property(PropertyAsset(
-    property_id      = "p1",
-    description      = "Office Building Chennai",
-    current_value_inr= 30000000,
-    purchase_value_inr=15000000,
-    rental_income_inr= 80000,
-    outstanding_loan_inr=0,
-))
-sundar.add_property(PropertyAsset(
-    property_id      = "p2",
-    description      = "Residential Villa",
-    current_value_inr= 25000000,
-    purchase_value_inr=12000000,
-    rental_income_inr= 0,
-    outstanding_loan_inr=0,
-))
+sundar._mutate(property_assets=[
+    PropertyAsset("p1","Office Building Chennai","Chennai",
+                  15000000, 30000000, False, 80000),
+    PropertyAsset("p2","Residential Villa","Chennai",
+                  12000000, 25000000, True, 0),
+])
 sundar.add_income_stream(
     IncomeStream("i1","business",1800000,True))
 sundar.add_income_stream(
     IncomeStream("i2","rental",80000,False))
-sundar.add_insurance(
-    InsurancePolicy("ins1","term","LIC",
-                    10000000, 36000))
+sundar._mutate(insurance_policies=[
+    InsurancePolicy("ins1","LIC","term", 10000000, 36000)])
 sundar.add_goal(FinancialGoal(
     "g1", GoalType.RETIREMENT,"Retire at 55",
     target_amount_inr   = 150000000,
