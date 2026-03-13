@@ -67,7 +67,7 @@ class FinancialOS:
         session = OSSession(user_id=twin.user_id, twin=twin)
         self._sessions[twin.user_id] = session
         logger.info(
-            "[FinancialOS] Onboarded user=%s nw=₹%,.0f",
+            "[FinancialOS] Onboarded user=%s nw=₹%.0f",
             twin.user_id, twin.current.net_worth_inr,
         )
         return session

@@ -1,12 +1,6 @@
 """
 LUMINA Twin Repository
 Save and load FinancialTwin snapshots to/from DB.
-
-The Twin is the source of truth.
-The DB is just persistence — the Twin's logic never changes.
-
-TwinRepository.save(twin)  → persists all new snapshots
-TwinRepository.load(user_id) → reconstructs Twin from DB
 """
 from __future__ import annotations
 
@@ -14,7 +8,7 @@ import json
 import time
 from typing import Optional
 
-from lumina.digital_twin.financial_twin import (
+from lumina.packages.digital_twin.financial_twin import (
     AccountType, BankAccount, DematHolding, FinancialGoal,
     FinancialTwin, GoalType, HoldingType, IncomeStream,
     InsurancePolicy, Loan, LoanType, PropertyAsset, TaxProfile,
@@ -25,54 +19,123 @@ from lumina.persistence.database import get_connection
 logger = get_logger("lumina.persistence.twin")
 
 
-def _snapshot_to_payload(snap) -> dict:
-    """Serialize a TwinSnapshot to a JSON-safe dict."""
-    def _ser(obj):
-        if hasattr(obj, "__dict__"):
-            return {k: _ser(v) for k, v in obj.__dict__.items()}
-        if isinstance(obj, list):
-            return [_ser(i) for i in obj]
-        if hasattr(obj, "value"):
-            return obj.value
-        return obj
+def _snap_to_dict(snap) -> dict:
+    """Safely serialize a TwinSnapshot — no recursion."""
+
+    def account(a) -> dict:
+        return {
+            "account_id":   a.account_id,
+            "bank_name":    a.bank_name,
+            "account_type": a.account_type.value,
+            "balance_inr":  a.balance_inr,
+            "last_updated": a.last_updated,
+        }
+
+    def holding(h) -> dict:
+        return {
+            "holding_id":       h.holding_id,
+            "name":             h.name,
+            "holding_type":     h.holding_type.value,
+            "units":            h.units,
+            "nav_or_price_inr": h.nav_or_price_inr,
+            "folio_id":         h.folio_id,
+        }
+
+    def prop(p) -> dict:
+        return {
+            "property_id":        p.property_id,
+            "description":        p.description,
+            "city":               p.city,
+            "purchase_value_inr": p.purchase_value_inr,
+            "current_value_inr":  p.current_value_inr,
+            "is_self_occupied":   p.is_self_occupied,
+            "monthly_rental_inr": p.monthly_rental_inr,
+        }
+
+    def loan(l) -> dict:
+        return {
+            "loan_id":                  l.loan_id,
+            "loan_type":                l.loan_type.value,
+            "lender":                   l.lender,
+            "principal_inr":            l.principal_inr,
+            "outstanding_inr":          l.outstanding_inr,
+            "interest_rate_pct":        l.interest_rate_pct,
+            "emi_inr":                  l.emi_inr,
+            "tenure_months_remaining":  l.tenure_months_remaining,
+        }
+
+    def insurance(i) -> dict:
+        return {
+            "policy_id":         i.policy_id,
+            "insurer":           i.insurer,
+            "policy_type":       i.policy_type,
+            "sum_assured_inr":   i.sum_assured_inr,
+            "annual_premium_inr":i.annual_premium_inr,
+            "maturity_year":     i.maturity_year,
+        }
+
+    def income(s) -> dict:
+        return {
+            "stream_id":   s.stream_id,
+            "source":      s.source,
+            "monthly_inr": s.monthly_inr,
+            "is_primary":  s.is_primary,
+            "is_taxable":  s.is_taxable,
+        }
+
+    def tax(t) -> dict:
+        return {
+            "pan":                    t.pan,
+            "preferred_regime":       t.preferred_regime,
+            "deductions_80c_inr":     t.deductions_80c_inr,
+            "deductions_80d_inr":     t.deductions_80d_inr,
+            "hra_exemption_inr":      t.hra_exemption_inr,
+            "nps_80ccd_inr":          t.nps_80ccd_inr,
+            "home_loan_interest_inr": t.home_loan_interest_inr,
+        }
+
+    def goal(g) -> dict:
+        return {
+            "goal_id":              g.goal_id,
+            "goal_type":            g.goal_type.value,
+            "description":          g.description,
+            "target_amount_inr":    g.target_amount_inr,
+            "target_year":          g.target_year,
+            "current_savings_inr":  g.current_savings_inr,
+            "monthly_sip_inr":      g.monthly_sip_inr,
+        }
 
     return {
-        "bank_accounts":      [_ser(a) for a in snap.bank_accounts],
-        "demat_holdings":     [_ser(h) for h in snap.demat_holdings],
-        "property_assets":    [_ser(p) for p in snap.property_assets],
-        "loans":              [_ser(l) for l in snap.loans],
-        "insurance_policies": [_ser(i) for i in snap.insurance_policies],
-        "income_streams":     [_ser(s) for s in snap.income_streams],
-        "tax_profile":        _ser(snap.tax_profile),
-        "financial_goals":    [_ser(g) for g in snap.financial_goals],
+        "bank_accounts":      [account(a) for a in snap.bank_accounts],
+        "demat_holdings":     [holding(h) for h in snap.demat_holdings],
+        "property_assets":    [prop(p)    for p in snap.property_assets],
+        "loans":              [loan(l)    for l in snap.loans],
+        "insurance_policies": [insurance(i) for i in snap.insurance_policies],
+        "income_streams":     [income(s)  for s in snap.income_streams],
+        "tax_profile":        tax(snap.tax_profile),
+        "financial_goals":    [goal(g)    for g in snap.financial_goals],
         "age":                snap.age,
         "risk_score":         snap.risk_score,
     }
 
 
 class TwinRepository:
-    """
-    Persists FinancialTwin snapshots to SQLite/Postgres.
-    The interface never changes — only DATABASE_URL changes.
-    """
 
-    def upsert_user(
-        self, user_id: str, age: int, risk_score: float
-    ) -> None:
+    def upsert_user(self, user_id: str, age: int, risk_score: float) -> None:
         now = time.time()
         with get_connection() as conn:
             conn.execute("""
                 INSERT INTO users (user_id, age, risk_score, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
-                    age        = excluded.age,
-                    risk_score = excluded.risk_score,
-                    updated_at = excluded.updated_at
+                    age=excluded.age,
+                    risk_score=excluded.risk_score,
+                    updated_at=excluded.updated_at
             """, (user_id, age, risk_score, now, now))
         logger.info("user.upserted", user_id=user_id)
 
     def save_snapshot(self, snap) -> None:
-        payload = json.dumps(_snapshot_to_payload(snap))
+        payload = json.dumps(_snap_to_dict(snap))
         with get_connection() as conn:
             conn.execute("""
                 INSERT OR IGNORE INTO twin_snapshots
@@ -96,17 +159,13 @@ class TwinRepository:
         )
 
     def save_twin(self, twin: FinancialTwin) -> None:
-        """Persist all snapshots not yet in DB."""
         self.upsert_user(
             twin.user_id,
             twin.current.age,
             twin.current.risk_score,
         )
-        saved = self._saved_snapshot_ids(twin.user_id)
-        new_snaps = [
-            s for s in twin.history
-            if s.snapshot_id not in saved
-        ]
+        saved = self._saved_ids(twin.user_id)
+        new_snaps = [s for s in twin.history if s.snapshot_id not in saved]
         for snap in new_snaps:
             self.save_snapshot(snap)
         logger.info(
@@ -116,75 +175,65 @@ class TwinRepository:
         )
 
     def load_twin(self, user_id: str) -> Optional[FinancialTwin]:
-        """Reconstruct a FinancialTwin from DB snapshots."""
-        rows = self._load_snapshot_rows(user_id)
+        rows = self._load_rows(user_id)
         if not rows:
-            logger.info("twin.not_found", user_id=user_id)
             return None
-
-        # Get age + risk from latest snapshot payload
-        latest_payload = json.loads(rows[-1]["payload"])
+        latest = json.loads(rows[-1]["payload"])
         twin = FinancialTwin(
             user_id    = user_id,
-            age        = latest_payload["age"],
-            risk_score = latest_payload["risk_score"],
+            age        = latest["age"],
+            risk_score = latest["risk_score"],
         )
-
-        # Re-apply mutations in order to rebuild history
-        for row in rows[1:]:   # skip genesis (already created)
-            payload = json.loads(row["payload"])
+        for row in rows[1:]:
+            p = json.loads(row["payload"])
             twin._mutate(
-                bank_accounts      = _deserialize_accounts(payload),
-                demat_holdings     = _deserialize_holdings(payload),
-                property_assets    = _deserialize_properties(payload),
-                loans              = _deserialize_loans(payload),
-                insurance_policies = _deserialize_insurance(payload),
-                income_streams     = _deserialize_income(payload),
-                tax_profile        = _deserialize_tax(payload),
-                financial_goals    = _deserialize_goals(payload),
-                age                = payload["age"],
-                risk_score         = payload["risk_score"],
+                bank_accounts      = _deser_accounts(p),
+                demat_holdings     = _deser_holdings(p),
+                property_assets    = _deser_props(p),
+                loans              = _deser_loans(p),
+                insurance_policies = _deser_insurance(p),
+                income_streams     = _deser_income(p),
+                tax_profile        = _deser_tax(p),
+                financial_goals    = _deser_goals(p),
+                age                = p["age"],
+                risk_score         = p["risk_score"],
             )
-
         logger.info(
             "twin.loaded",
             user_id   = user_id,
             snapshots = len(twin.history),
-            net_worth = twin.current.net_worth_inr,
         )
         return twin
 
-    def _saved_snapshot_ids(self, user_id: str) -> set[str]:
+    def _saved_ids(self, user_id: str) -> set[str]:
         with get_connection() as conn:
             rows = conn.execute(
-                "SELECT snapshot_id FROM twin_snapshots WHERE user_id = ?",
+                "SELECT snapshot_id FROM twin_snapshots WHERE user_id=?",
                 (user_id,)
             ).fetchall()
         return {r["snapshot_id"] for r in rows}
 
-    def _load_snapshot_rows(self, user_id: str) -> list:
+    def _load_rows(self, user_id: str) -> list:
         with get_connection() as conn:
             return conn.execute("""
                 SELECT * FROM twin_snapshots
-                WHERE user_id = ?
-                ORDER BY timestamp ASC
+                WHERE user_id=? ORDER BY timestamp ASC
             """, (user_id,)).fetchall()
 
 
 # ── Deserializers ────────────────────────────────────────────────────
 
-def _deserialize_accounts(p: dict) -> list[BankAccount]:
+def _deser_accounts(p: dict) -> list:
     return [
         BankAccount(
             a["account_id"], a["bank_name"],
             AccountType(a["account_type"]),
-            a["balance_inr"],
-            a.get("last_updated", time.time()),
+            a["balance_inr"], a.get("last_updated", time.time()),
         )
         for a in p.get("bank_accounts", [])
     ]
 
-def _deserialize_holdings(p: dict) -> list[DematHolding]:
+def _deser_holdings(p: dict) -> list:
     return [
         DematHolding(
             h["holding_id"], h["name"],
@@ -195,7 +244,7 @@ def _deserialize_holdings(p: dict) -> list[DematHolding]:
         for h in p.get("demat_holdings", [])
     ]
 
-def _deserialize_properties(p: dict) -> list[PropertyAsset]:
+def _deser_props(p: dict) -> list:
     return [
         PropertyAsset(
             pr["property_id"], pr["description"], pr["city"],
@@ -206,7 +255,7 @@ def _deserialize_properties(p: dict) -> list[PropertyAsset]:
         for pr in p.get("property_assets", [])
     ]
 
-def _deserialize_loans(p: dict) -> list[Loan]:
+def _deser_loans(p: dict) -> list:
     return [
         Loan(
             l["loan_id"], LoanType(l["loan_type"]),
@@ -217,7 +266,7 @@ def _deserialize_loans(p: dict) -> list[Loan]:
         for l in p.get("loans", [])
     ]
 
-def _deserialize_insurance(p: dict) -> list[InsurancePolicy]:
+def _deser_insurance(p: dict) -> list:
     return [
         InsurancePolicy(
             i["policy_id"], i["insurer"], i["policy_type"],
@@ -227,7 +276,7 @@ def _deserialize_insurance(p: dict) -> list[InsurancePolicy]:
         for i in p.get("insurance_policies", [])
     ]
 
-def _deserialize_income(p: dict) -> list[IncomeStream]:
+def _deser_income(p: dict) -> list:
     return [
         IncomeStream(
             s["stream_id"], s["source"], s["monthly_inr"],
@@ -236,7 +285,7 @@ def _deserialize_income(p: dict) -> list[IncomeStream]:
         for s in p.get("income_streams", [])
     ]
 
-def _deserialize_tax(p: dict) -> TaxProfile:
+def _deser_tax(p: dict) -> TaxProfile:
     t = p.get("tax_profile", {})
     return TaxProfile(
         pan                    = t.get("pan", ""),
@@ -248,7 +297,7 @@ def _deserialize_tax(p: dict) -> TaxProfile:
         home_loan_interest_inr = t.get("home_loan_interest_inr", 0),
     )
 
-def _deserialize_goals(p: dict) -> list[FinancialGoal]:
+def _deser_goals(p: dict) -> list:
     return [
         FinancialGoal(
             g["goal_id"], GoalType(g["goal_type"]),
