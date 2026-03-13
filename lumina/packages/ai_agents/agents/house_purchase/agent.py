@@ -7,7 +7,7 @@ Reasoning chain:
   1. Load user financial profile from wealth graph
   2. Calculate maximum loan eligibility (RBI 75/80% LTV norm)
   3. Run EMI stress test at +200bps rate shock
-  4. Check down-payment gap vs liquid assets
+  4. Check down-payment gap vs liquid assets (tiered haircut model)
   5. Return structured affordability verdict + action steps
 """
 
@@ -34,14 +34,14 @@ class HousePurchaseOutput(AgentOutput):
     recommended_loan_inr: Optional[float] = None
     monthly_emi_inr: Optional[float] = None
     down_payment_gap_inr: Optional[float] = None
-    stress_emi_inr: Optional[float] = None     # at +200bps
-    verdict: Optional[str] = None              # AFFORDABLE | STRETCH | NOT_ADVISED
+    stress_emi_inr: Optional[float] = None
+    verdict: Optional[str] = None
 
 
 class HousePurchaseAgent(LuminaBaseAgent[HousePurchaseInput, HousePurchaseOutput]):
 
     name = "house_purchase_agent"
-    version = "1.0.0"
+    version = "1.1.0"
     required_consent = ConsentLevel.READ_ONLY
 
     def __init__(self, graph: WealthGraph):
@@ -76,18 +76,30 @@ class HousePurchaseAgent(LuminaBaseAgent[HousePurchaseInput, HousePurchaseOutput
         stress_emi = self._calc_emi(recommended_loan, inp.expected_rate_pct + 2.0, inp.loan_tenure_years)
         trace.append(f"EMI @ {inp.expected_rate_pct}%: ₹{emi:,.0f}/mo | stress +200bps: ₹{stress_emi:,.0f}/mo")
 
-        # Down payment gap
-        down_payment_needed = inp.property_value_inr - recommended_loan
+        # Tiered liquid asset model for down payment
+        # Tier 1 (100%): cash, FD         — instant access
+        # Tier 2 (80%):  equity, MF       — T+3, haircut for market timing
+        # Tier 3 (60%):  stocks            — volatility haircut
+        # Excluded:      real_estate, crypto — illiquid or speculative
         liquid_assets = sum(
-            a.current_value_inr for a in profile.assets
-            if a.asset_type in ("cash", "mutual_fund", "fd")
+            a.current_value_inr * (
+                1.00 if a.asset_type in ("cash", "fd", "savings") else
+                0.80 if a.asset_type in ("mutual_fund", "debt_fund", "equity") else
+                0.60 if a.asset_type == "stocks" else
+                0.00
+            )
+            for a in profile.assets
         )
+
+        down_payment_needed = inp.property_value_inr - recommended_loan
         gap = max(0, down_payment_needed - liquid_assets)
-        trace.append(f"Down payment needed: ₹{down_payment_needed:,.0f} | liquid: ₹{liquid_assets:,.0f} | gap: ₹{gap:,.0f}")
+        trace.append(f"Liquid assets (tiered): ₹{liquid_assets:,.0f} | Down payment needed: ₹{down_payment_needed:,.0f} | Gap: ₹{gap:,.0f}")
 
         # Verdict
         foir = emi / profile.monthly_income_inr
-        if foir <= 0.40 and gap == 0 and stress_emi / profile.monthly_income_inr <= 0.50:
+        stress_foir = stress_emi / profile.monthly_income_inr
+
+        if foir <= 0.40 and gap == 0 and stress_foir <= 0.50:
             verdict = "AFFORDABLE"
             confidence = 0.92
         elif foir <= 0.50 and gap < profile.monthly_income_inr * 6:
@@ -97,9 +109,9 @@ class HousePurchaseAgent(LuminaBaseAgent[HousePurchaseInput, HousePurchaseOutput
         else:
             verdict = "NOT_ADVISED"
             confidence = 0.85
-            warnings.append("EMI would exceed 50% of income or down-payment gap is too large.")
+            warnings.append("EMI exceeds 50% of income or down-payment gap too large.")
 
-        trace.append(f"Verdict: {verdict} (FOIR={foir:.0%})")
+        trace.append(f"Verdict: {verdict} (FOIR={foir:.0%}, stress_FOIR={stress_foir:.0%})")
 
         return HousePurchaseOutput(
             session_id=inp.session_id, agent_name=self.name,
