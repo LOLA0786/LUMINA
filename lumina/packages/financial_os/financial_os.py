@@ -28,6 +28,7 @@ from lumina.packages.execution_layer.execution_request import (
 )
 from lumina.packages.governance.audit_ledger import AuditLedger
 from lumina.packages.governance.policy_engine import PolicyEngine, PolicyResult
+from lumina.packages.event_engine.event_reactor import EventReactor
 from lumina.packages.advisor_layer.advisor_brief import (
     AdvisorBrief, AlertPriority, ClientAlert,
 )
@@ -58,6 +59,8 @@ class FinancialOS:
         self.audit_ledger  = AuditLedger()
         self._sessions: dict[str, OSSession] = {}
         self._agents: dict[str, Any] = {}
+        self.reactor = EventReactor(self)
+        self.reactor.wire()
         logger.info("[FinancialOS] Initialized")
 
     def register_agent(self, name: str, agent: Any) -> None:
